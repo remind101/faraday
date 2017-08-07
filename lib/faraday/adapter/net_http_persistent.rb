@@ -8,6 +8,7 @@ module Faraday
       dependency 'net/http/persistent'
 
       def with_net_http_connection(env)
+        proxy_uri = nil
         if proxy = env[:request][:proxy]
           proxy_uri = ::URI::HTTP === proxy[:uri] ? proxy[:uri].dup : ::URI.parse(proxy[:uri].to_s)
           proxy_uri.user = proxy_uri.password = nil
@@ -18,7 +19,11 @@ module Faraday
           end if proxy[:user]
         end
 
-        yield Net::HTTP::Persistent.new 'Faraday', proxy_uri
+        if Net::HTTP::Persistent.instance_method(:initialize).parameters.first == [:key, :name]
+          yield Net::HTTP::Persistent.new(name: 'Faraday', proxy: proxy_uri)
+        else
+          yield Net::HTTP::Persistent.new('Faraday', proxy_uri)
+        end
       end
 
       def perform_request(http, env)
